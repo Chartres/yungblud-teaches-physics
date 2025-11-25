@@ -1,0 +1,56 @@
+name: Deploy circular-chaos to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-circular-chaos"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Angular app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: circular-chaos
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: circular-chaos/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for GitHub Pages (sets correct base-href)
+        run: npm run build:gh
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: circular-chaos/dist-ghpages
+
+  deploy:
+    name: Deploy to GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
